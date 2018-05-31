@@ -14,7 +14,7 @@ from iapr.webcam import WebcamVideoStream
 # Tool config
 print_local = print
 RESULT_DIR = "result"
-SAVE_TO_FILE = False
+SAVE_TO_FILE = True
 
 
 # Typed variables
@@ -28,6 +28,8 @@ CORR_FACTORS = False
 NUMBER_OF_FIG = 10
 DIST_MIN = 20
 
+image_counter =1
+image_prefix = "test1"
 
 def main():
 
@@ -139,6 +141,10 @@ def get_images():
 
     images = np.zeros((1, frame.shape[0], frame.shape[1]))
     images[0] = frame
+    plt.imshow(frame)
+    plt.savefig("{}_{}.png".format(image_prefix, image_counter))
+    image_counter += 1
+    plt.close()
     return images
 
 # Target are stored as : (key, center, is_number)

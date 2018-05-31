@@ -27,7 +27,7 @@ class RobotController :
 
 
     def calibration(self) :
-        dist = 10
+        dist = 20
         angle = 45
 
         # Rotate robot of 45 degrees to calibrate the future movements
