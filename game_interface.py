@@ -48,8 +48,8 @@ def main():
 
         images = get_images(image_counter)
         im_names = ["Analysis image"]
-        for i in range(1000):
-            get_images(i)
+#        for i in range(1000):
+#            get_images(i)
     else:
         ic =  skimage.io.imread_collection("data/test1_1.png")
         images = skimage.io.concatenate_images(ic)
