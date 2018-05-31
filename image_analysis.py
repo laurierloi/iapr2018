@@ -13,7 +13,7 @@ from skimage import exposure, feature, measure, filters
 from scipy import ndimage as ndi
 from scipy import spatial
 
-import seaborn as sns
+#import seaborn as sns
 
 
 class ImageAnalysis:
@@ -148,7 +148,7 @@ class ImageAnalysis:
         return circle_info
 
     def check_fourier_is_ok(self, fourier_descriptor):
-        target_fourier = [(5300, 7000), (20, 300), (910, 1800)]
+        target_fourier = [(4500, 8000), (00, 300), (800, 2000)]
         fourier_ok = True
         for i in range(len(target_fourier)):
             if fourier_descriptor[i+1] < target_fourier[i][0]:
@@ -201,6 +201,7 @@ class ImageAnalysis:
     def get_arrow_info(self, arrow_im, arrow_props, inv_angle = 0.6, plotfig=False):
         arrow_info = []
         for index in range(len(arrow_props)):
+            print(index)
             prop = arrow_props[index][0]
             bbox = prop.bbox
             bbox_center = ((bbox[2]+bbox[0])/2, (bbox[3]+bbox[1])/2)
@@ -227,10 +228,11 @@ class ImageAnalysis:
 
     def process_arrow(self, inv_angle=0.6, plotfig=False, savefig=False):
         arrow_contours = self.get_arrow_contours()
-
+        print(arrow_contours)
         arrow_im = self.get_arrow_im(arrow_contours, savefig=savefig)
 
         arrow_props = self.get_region_props(arrow_im)
+        print(arrow_props)
 
         arrow_info = self.get_arrow_info(arrow_im, arrow_props, inv_angle, plotfig)
 

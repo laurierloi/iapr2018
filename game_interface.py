@@ -5,6 +5,7 @@ import argparse
 
 import skimage.io
 import matplotlib.pyplot as plt
+import numpy as np
 
 from image_analysis import ImageAnalysis
 from robot_control import RobotController
@@ -19,7 +20,7 @@ SAVE_TO_FILE = True
 
 # Typed variables
 imageAnalysis = None
-wvs = None
+wvs = WebcamVideoStream(src=0)
 robotController = None
 
 
@@ -28,22 +29,24 @@ CORR_FACTORS = False
 NUMBER_OF_FIG = 10
 DIST_MIN = 20
 
-image_counter =1
+
 image_prefix = "test1"
 
 def main():
 
     #TODO detect the count of forms
-
+    image_counter = 1
 
     # 1) Create a webcam video stream
     #   Note: src=0 links to the USB Webcam of the computers provided for the project
     webcam = True
     if webcam:
-        wvs = WebcamVideoStream(src=0)
+        #wvs =
 
-        images = get_images()
+        images = get_images(image_counter)
         im_names = ["Analysis image"]
+        for i in range(1000):
+            get_images(i)
     else:
         ic =  skimage.io.imread_collection("Parcours/2.jpg")
         images = skimage.io.concatenate_images(ic)
@@ -131,15 +134,15 @@ def get_robot_info():
 
 
 def get_arrow_info():
-    images = get_images(wvs)
+    images = get_images(image_counter)
     arrow_info = imageAnalysis.get_arrow_info(images)
     return arrow_info
 
-def get_images():
+def get_images(image_counter):
     # Read most recent frame
     frame = wvs.read()
 
-    images = np.zeros((1, frame.shape[0], frame.shape[1]))
+    images = np.zeros((1, frame.shape[0], frame.shape[1], frame.shape[2]))
     images[0] = frame
     plt.imshow(frame)
     plt.savefig("{}/{}_{}.png".format(RESULT_DIR, image_prefix, image_counter))
