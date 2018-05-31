@@ -21,9 +21,9 @@ class RobotController :
             convert_angle = theta
         else :
             if theta >= 0 :
-                convert_angle = theta - math.radians(180)
+                convert_angle = math.radians(180) - theta
             else :
-                convert_angle = theta + math.radians(180)
+                convert_angle = -theta - math.radians(180)
         return convert_angle
 
 
@@ -42,27 +42,27 @@ class RobotController :
 
         dist_t = self.cal_angle
         dist_p = np.linalg.norm([x_f - x_i, y_f - y_i])
-        corr_b = dist_t/dist_p
+        corr_b = dist_p/dist_t
 
         self.__a_init = np.abs(corr_a)
         self.__b_init = np.abs(corr_b)
         print("Calibration corrections: a:{}, b:{}".format(self.__a_init, self.__b_init))
 
     def calcDisplacement(self, x_i, y_i, theta_i, x_f, y_f) :
-        dir_vector = [x_f-x_i, y_f-y_i]
+        dir_vector = [x_f-x_i, np.abs(y_f-y_i)]
         dist = np.linalg.norm(dir_vector)
 
         # Calculate angle of this vector
         if dir_vector[0] >= 0 :
             if dir_vector[1] >= 0 :
-                angle = - math.acos(dir_vector[0]/dist)
+                angle = - math.asin(dir_vector[1]/dist)
             else :
-                angle = np.pi - math.acos(dir_vector[0]/dist)
+                angle = np.pi - math.asin(dir_vector[1]/dist)
         else :
             if dir_vector[1] >= 0 :
-                angle = math.acos(dir_vector[0]/dist) - np.pi
+                angle = math.asin(dir_vector[1]/dist) - np.pi
             else :
-                angle = math.acos(dir_vector[0]/dist)
+                angle = math.asin(dir_vector[1]/dist)
         angle = -(theta_i + angle)
 
         return angle, dist
@@ -101,7 +101,8 @@ class RobotController :
         else :
             return False
 
-    def GoTo(self, x_i, y_i, theta_i, x_f, y_f) :
+    def GoTo(self, x_i, y_i, theta_i, x_f, y_f, epsilon = 4) :
+        print("X_i:{}, Y_i:{}, Theta_i:{}, x_f:{}, y_f:{}".format(x_i, y_i, theta_i, x_f, y_f))
         corr_fact_angle = 0
         corr_fact_dist = 0
 
@@ -116,17 +117,17 @@ class RobotController :
         self.dist_t = dist
 
         # Calculate average of correction factors
-        #if len(self.__a) > 0 :
-        #    corr_fact_angle = self.__a_init + np.mean(self.__a)
-        #else :
-        #    corr_fact_angle = self.__a_init
+        if len(self.__a) > 0 :
+            corr_fact_angle = self.__a_init + np.mean(self.__a)
+        else :
+            corr_fact_angle = self.__a_init
 
-        #if len(self.__b) > 0 :
-        #    corr_fact_dist = self.__b_init + np.mean(self.__b)
-        #else :
-        #    corr_fact_dist = self.__b_init
-        corr_fact_angle = 1
-        corr_fact_dist = 2
+        if len(self.__b) > 0 :
+            corr_fact_dist = (self.__b_init + np.mean(self.__b))/self.cal_dist
+        else :
+            corr_fact_dist = (self.__b_init)/self.cal_dist
+        #corr_fact_angle = 1
+        #corr_fact_dist = 2
 
         print('Corr factors: a = {} AND b = {}'.format(corr_fact_angle, corr_fact_dist))
 
@@ -135,11 +136,12 @@ class RobotController :
         distance_to_move = corr_fact_dist*dist
         print("Movements: angle: {}, distance: {}".format(angle_to_move, distance_to_move))
 
-        # Rotate robot
-        self.robot.steer_in_place(angle=angle_to_move)
-
-        # Move robot
-        self.robot.move_forward(distance=distance_to_move)
+        if np.abs(angle_to_move) > epsilon:
+            # Rotate robot
+            self.robot.steer_in_place(angle=angle_to_move)
+        else:
+            # Move robot
+            self.robot.move_forward(distance=distance_to_move)
 
     def check_angle(self, theta_i, epsilon=0.1):
         if  (self.theta_t - epsilon) < theta_i and (self.theta_t + epsilon) > theta_i:

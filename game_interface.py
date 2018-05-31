@@ -13,7 +13,7 @@ REAL_WORLD = False
 from robot_control import RobotController
 from iapr.webcam import WebcamVideoStream
 
-from skimage import exposure, feature, measure, filters
+from skimage import exposure, feature, measure, filters, transform
 
 # Tool config
 print_local = print
@@ -39,6 +39,8 @@ image_prefix = "test1"
 
 def main():
 
+    #wvs.stop()
+    #wvs.release()
     #TODO detect the count of forms
 
     # 1) Create a webcam video stream
@@ -88,7 +90,7 @@ def main():
         plt.plot([y0,y1], [x0, x1], 'ro-')
     plt.savefig("gameplan.png")
     plt.close()
-    exit()
+
     print("Calibrating robot")
     # 4) calibrate robot
     global robotController
@@ -116,6 +118,8 @@ def main():
         is_number = target[2]
         if target_point[0] is "circle":
             finish = True
+        else:
+            finish = False
         print("New target: ", target_point)
 
         on_shape = False
@@ -131,7 +135,7 @@ def main():
                                              robot_info[1],
                                              robot_info[2]
                                            )
-            on_shape = robotController.check_on_the_shape(robot_info[0],
+            on_shape = robotController.checkOnTheShape(robot_info[0],
                                                           robot_info[1],
                                                           is_number,
                                                           finish = finish,
@@ -141,7 +145,14 @@ def main():
 # (bbox_center, orientation, direction_x)
 def get_robot_info():
     global RobotController
-    arrow_info = get_arrow_info()[0]
+    #Try to get robot position until you get it
+    while True:
+        try:
+            arrow_info = get_arrow_info()[0]
+            break
+        except:
+            continue
+
     orientation = arrow_info[1]
     direction_x = arrow_info[2]
     x = arrow_info[0][1]
@@ -162,7 +173,7 @@ def get_images():
     global wvs
     global image_counter
     frame = wvs.read()
-    frame = measure.rescale(frame, scale=0.6)
+    frame = transform.rescale(frame, scale=0.6)
     images = np.zeros((1, frame.shape[0], frame.shape[1], frame.shape[2]))
     images[0] = frame
     fig = plt.figure(frameon=False)

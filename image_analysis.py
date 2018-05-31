@@ -45,7 +45,7 @@ class ImageAnalysis:
 
         # Extract arrow properties
         print("Extracting arrow properties")
-        self.arrow_info = self.process_arrow(inv_angle=0.6, plotfig=False, savefig=self.savefig)
+        self.arrow_info = self.process_arrow(inv_angle=0.65, plotfig=False, savefig=self.savefig)
         print(self.arrow_info)
 
         # Get sub images
@@ -84,7 +84,7 @@ class ImageAnalysis:
     def get_arrow_info(self, images):
         self.images = images
         self.get_image_gray()
-        self.arrow_info = self.process_arrow(inv_angle=0.6, plotfig=False, savefig=False)
+        self.arrow_info = self.process_arrow(inv_angle=0.65, plotfig=False, savefig=False)
         return self.arrow_info
 
 
@@ -150,11 +150,10 @@ class ImageAnalysis:
         return circle_info
 
     def check_fourier_is_ok(self, fourier_descriptor):
-        target_fouriers = [(2100, 3000), (0, 300), (300, 900)]
+        #target_fouriers = [(2100, 3000), (0, 300), (300, 900)]
         # Additional fouriers for calibration
-        #target_fouriers = [(0, 6000), (0, 500), (00, 1800)]
+        target_fouriers = [(4000, 8000), (10, 400), (300, 1800)]
         fourier_ok = True
-        print(fourier_descriptor)
         for i in range(len(target_fouriers)):
             if fourier_descriptor[i+1] < target_fouriers[i][0]:
                 fourier_ok = False
@@ -168,14 +167,12 @@ class ImageAnalysis:
         for index in range(len(self.images_gray)):
             #gradient_im = filters.sobel(self.images_gray[index])
             gradient_im = filters.scharr(self.images_gray[index])
-            plt.imshow(gradient_im)
-            plt.show()
             thresh = filters.threshold_otsu(gradient_im)
             gradient_im[gradient_im < thresh] = 0
             #thresh = filters.threshold_otsu(gradient_im)
             #gradient_im[gradient_im < thresh] = 0
             gradient_im[gradient_im >= thresh] = 1
-            sub_image = ndi.binary_closing(gradient_im, iterations=3)
+            sub_image = ndi.binary_closing(gradient_im, iterations=4)
             contours = measure.find_contours(gradient_im, level=0.5)
 
             for i, contour in enumerate(contours):
