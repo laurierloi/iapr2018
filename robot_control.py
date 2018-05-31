@@ -49,21 +49,34 @@ class RobotController :
         print("Calibration corrections: a:{}, b:{}".format(self.__a_init, self.__b_init))
 
     def calcDisplacement(self, x_i, y_i, theta_i, x_f, y_f) :
-        dir_vector = [x_f-x_i, np.abs(y_f-y_i)]
+        #dir_vector = [x_f-x_i, y_f-y_i]
+        dir_vector = [x_f-x_i, y_i-y_f]
         dist = np.linalg.norm(dir_vector)
 
+        delta_x = dir_vector[0]
+        delta_y = dir_vector[1]
+
+        if delta_x == 0:
+            if delta_y < 0:
+                phi = -np.pi/2
+            else:
+                phi = np.pi/2
+        else:
+            phi = np.arctan(delta_y, delta_x)
+
+        angle = -(theta_i-phi)
         # Calculate angle of this vector
-        if dir_vector[0] >= 0 :
-            if dir_vector[1] >= 0 :
-                angle = - math.asin(dir_vector[1]/dist)
-            else :
-                angle = np.pi - math.asin(dir_vector[1]/dist)
-        else :
-            if dir_vector[1] >= 0 :
-                angle = math.asin(dir_vector[1]/dist) - np.pi
-            else :
-                angle = math.asin(dir_vector[1]/dist)
-        angle = -(theta_i + angle)
+        #if dir_vector[0] >= 0 :
+        #    if dir_vector[1] >= 0 :
+        #        angle = - math.asin(dir_vector[1]/dist)
+        #    else :
+        #        angle = np.pi - math.asin(dir_vector[1]/dist)
+        #else :
+        #    if dir_vector[1] >= 0 :
+        #        angle = math.asin(dir_vector[1]/dist) - np.pi
+        #    else :
+        #        angle = math.asin(dir_vector[1]/dist)
+        #angle = -(theta_i + angle)
 
         return angle, dist
 
