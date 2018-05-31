@@ -142,7 +142,7 @@ def get_images():
     images = np.zeros((1, frame.shape[0], frame.shape[1]))
     images[0] = frame
     plt.imshow(frame)
-    plt.savefig("{}_{}.png".format(image_prefix, image_counter))
+    plt.savefig("{}/{}_{}.png".format(RESULT_DIR, image_prefix, image_counter))
     image_counter += 1
     plt.close()
     return images
