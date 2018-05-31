@@ -150,9 +150,9 @@ class ImageAnalysis:
         return circle_info
 
     def check_fourier_is_ok(self, fourier_descriptor):
-        #target_fouriers = [(2100, 3000), (0, 300), (300, 900)]
+        target_fouriers = [(2100, 3000), (0, 300), (300, 900)]
         # Additional fouriers for calibration
-        target_fouriers = [(0, 6000), (0, 500), (00, 1800)]
+        #target_fouriers = [(0, 6000), (0, 500), (00, 1800)]
         fourier_ok = True
         print(fourier_descriptor)
         for i in range(len(target_fouriers)):
@@ -166,17 +166,17 @@ class ImageAnalysis:
         gradient_map = np.zeros(np.shape(self.images_gray))
         arrow_contours = {}
         for index in range(len(self.images_gray)):
-            gradient_im = filters.sobel(self.images_gray[index])
-            #plt.imshow(gradient_im)
-            #plt.show()
-            #thresh = filters.threshold_otsu(gradient_im)
-            thresh=0.5
+            #gradient_im = filters.sobel(self.images_gray[index])
+            gradient_im = filters.scharr(self.images_gray[index])
+            plt.imshow(gradient_im)
+            plt.show()
+            thresh = filters.threshold_otsu(gradient_im)
             gradient_im[gradient_im < thresh] = 0
             #thresh = filters.threshold_otsu(gradient_im)
             #gradient_im[gradient_im < thresh] = 0
             gradient_im[gradient_im >= thresh] = 1
-            sub_image = ndi.binary_closing(gradient_im, iterations=10)
-            contours = measure.find_contours(gradient_im, level=0.8)
+            sub_image = ndi.binary_closing(gradient_im, iterations=3)
+            contours = measure.find_contours(gradient_im, level=0.5)
 
             for i, contour in enumerate(contours):
                 complex_contour = contour[:,0] + (contour[:,1] * 1j)
@@ -277,7 +277,7 @@ class ImageAnalysis:
             for index2 in range(len(scaled_sub_images[index])):
                 local_im = scaled_sub_images[index][index2]
                 try:
-                    thresh = filters.threshold_otsu(local_im, level=0.6)
+                    thresh = filters.threshold_otsu(local_im)
                     local_im[local_im < thresh] = 0
                     local_im[local_im >= thresh] = 1
                 except:

@@ -73,7 +73,7 @@ def main(args):
     ymax = 425
     images = np.copy(images[:,ymin:ymax, xmin:xmax, :])
 #    plt.imshow(images[0])
- #   plt.show()
+#    plt.show()
 
     print_local('Number of images: ', images.shape[0])
     print_local('Image size: {}, {} '.format(images.shape[1], images.shape[2]))

@@ -13,6 +13,7 @@ REAL_WORLD = False
 from robot_control import RobotController
 from iapr.webcam import WebcamVideoStream
 
+from skimage import exposure, feature, measure, filters
 
 # Tool config
 print_local = print
@@ -159,12 +160,17 @@ def get_arrow_info():
 def get_images():
     # Read most recent frame
     global wvs
-    frame = wvs.read()
     global image_counter
+    frame = wvs.read()
+    frame = measure.rescale(frame, scale=0.6)
     images = np.zeros((1, frame.shape[0], frame.shape[1], frame.shape[2]))
     images[0] = frame
-    plt.imshow(frame)
-    plt.savefig("{}/{}_{}.png".format(RESULT_DIR, image_prefix, image_counter))
+    fig = plt.figure(frameon=False)
+    ax = plt.Axes(fig, [0., 0., 1., 1.])
+    ax.set_axis_off()
+    fig.add_axes(ax)
+    ax.imshow(frame)
+    fig.savefig("{}/{}_{}.png".format(RESULT_DIR, image_prefix, image_counter))
     image_counter += 1
     plt.close()
     return images
