@@ -32,24 +32,22 @@ CORR_FACTORS = False
 NUMBER_OF_FIG = 10
 DIST_MIN = 20
 
+image_counter = 1
 
 image_prefix = "test1"
 
 def main():
 
     #TODO detect the count of forms
-    image_counter = 1
 
     # 1) Create a webcam video stream
     #   Note: src=0 links to the USB Webcam of the computers provided for the project
-    webcam = False
+    webcam = True
     if webcam:
         #wvs =
 
-        images = get_images(image_counter)
+        images = get_images()
         im_names = ["Analysis image"]
-#        for i in range(1000):
-#            get_images(i)
     else:
         ic =  skimage.io.imread_collection("data/test1_1.png")
         images = skimage.io.concatenate_images(ic)
@@ -61,7 +59,9 @@ def main():
         im_names = ["Test image"]
 
     # 2) first image analysis
-    imageAnalysis = ImageAnalysis(images, im_names, result_dir=RESULT_DIR,
+    print("Doing first image analysis")
+    global imageAnalysis
+    imageAnalysis= ImageAnalysis(images, im_names, result_dir=RESULT_DIR,
                                   print_local=print_local, save_to_file=SAVE_TO_FILE, savefig=SAVE_FIG)
 
     imageAnalysis.image_analysis()
@@ -70,11 +70,13 @@ def main():
     arrow_info = imageAnalysis.arrow_info[0] # (bbox_center, orientation, direction_x)
 
     # 3) get target list and store it
+    print("Getting target list")
     target_list = get_target_list(figures_info, circle_info)
 
     if len(target_list) < NUMBER_OF_FIG:
         print("WARNING: not enough figures have been detected")
 
+    print("Saving gameplan")
     plt.imshow(images[0])
     for index in range(len(target_list)-1):
         x0 = target_list[index][1][0]
@@ -86,11 +88,11 @@ def main():
     plt.savefig("gameplan.png")
     plt.close()
 
-    exit()
-
+    print("Calibrating robot")
     # 4) calibrate robot
-    robot_info_cal = get_robot_info()
+    global robotController
     robotController = RobotController()
+    robot_info_cal = get_robot_info()
     robotController.calibration()
     robot_info = get_robot_info()
     robotController.calcFactorCalibr(robot_info_cal[0],
@@ -103,14 +105,17 @@ def main():
 
     # Target are stored as : (key, center, is_number)
 
+    print("Executing task")
     # 5) Execute task
     for index, target in enumerate(target_list):
         target_point = target[1]
+        print("Target:", target_point)
         x_t = target_point[1]
         y_t = target_point[0]
-        is_number = target_point[2]
+        is_number = target[2]
         if target_point[0] is "circle":
             finish = True
+        print("New target: ", target_point)
 
         on_shape = False
         while not on_shape:
@@ -134,24 +139,28 @@ def main():
 
 # (bbox_center, orientation, direction_x)
 def get_robot_info():
-    arrow_info = get_arrow_info()
+    arrow_info = get_arrow_info()[0]
+    print(arrow_info)
     orientation = arrow_info[1]
     direction_x = arrow_info[2]
     x = arrow_info[0][1]
     y = arrow_info[0][0]
+    global RobotController
     theta = robotController.convAngle(orientation, direction_x)
     return (x, y, theta)
 
 
 def get_arrow_info():
-    images = get_images(image_counter)
+    images = get_images()
+    global imageAnalysis
     arrow_info = imageAnalysis.get_arrow_info(images)
     return arrow_info
 
-def get_images(image_counter):
+def get_images():
     # Read most recent frame
+    global wvs
     frame = wvs.read()
-
+    global image_counter
     images = np.zeros((1, frame.shape[0], frame.shape[1], frame.shape[2]))
     images[0] = frame
     plt.imshow(frame)

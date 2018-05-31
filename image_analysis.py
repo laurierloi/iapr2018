@@ -80,7 +80,7 @@ class ImageAnalysis:
         print("Getting figures info")
         self.figures_info = self.get_figures_info()
 
-    def get_arrow_info(images):
+    def get_arrow_info(self, images):
         self.images = images
         self.get_image_gray()
         self.arrow_info = self.process_arrow(inv_angle=0.6, plotfig=False, savefig=False)
@@ -154,7 +154,7 @@ class ImageAnalysis:
         #target_fouriers = [[(2100, 3500), (0, 300), (300, 900)],
         #                   [(1000, 6000), (0, 300), (300, 1800)]]
         fourier_ok = True
-        for i in range(len(target_fourier)):
+        for i in range(len(target_fouriers)):
             for target_fourier in target_fouriers:
                 if fourier_descriptor[i+1] < target_fourier[i][0]:
                     fourier_ok = False
@@ -204,7 +204,7 @@ class ImageAnalysis:
             self.print_images(arrows, title="Arrows")
         return arrows
 
-    def get_arrow_info(self, arrow_im, arrow_props, inv_angle = 0.6, plotfig=False):
+    def get_arrow_local_info(self, arrow_im, arrow_props, inv_angle = 0.6, plotfig=False):
         arrow_info = []
         for index in range(len(arrow_props)):
             prop = arrow_props[index][0]
@@ -237,7 +237,7 @@ class ImageAnalysis:
 
         arrow_props = self.get_region_props(arrow_im)
 
-        arrow_info = self.get_arrow_info(arrow_im, arrow_props, inv_angle, plotfig)
+        arrow_info = self.get_arrow_local_info(arrow_im, arrow_props, inv_angle, plotfig)
 
         return arrow_info
 

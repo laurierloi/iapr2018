@@ -6,12 +6,11 @@ from iapr.robot import Robot
 ######## Class definition
 class RobotController :
 
-    def __init__(self, name):
-        self.name = name
+    def __init__(self):
         self.__a = []
         self.__b = []
-        self.__a_init = 0
-        self.__b_init = 0
+        self.__a_init = 1
+        self.__b_init = 1
         self.robot = Robot(hostname='ev3dev.local')
         #print('a = {} AND b = {} \n'.format(self.__a, self.__b))
 
@@ -31,7 +30,7 @@ class RobotController :
         angle = 45
 
         # Rotate robot of 45 degrees to calibrate the future movements
-        self.robot.steer_in_place(angle=math.degrees(angle))
+        self.robot.steer_in_place(angle=angle)
 
         # Move robot of 10cm to calibrate the future movements
         self.robot.move_forward(distance=dist)
