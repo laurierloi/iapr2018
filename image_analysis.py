@@ -29,12 +29,213 @@ class ImageAnalysis:
     def image_analysis(self):
         """Function which computes every steps of the image analysis"""
 
+#        #Draw circles
+#        base_im = np.zeros((100,100))
+
+
+
+        # Get equalized gray image
+        print("Getting gray image")
+        self.get_image_gray()
+
+        # Extract labels and properties from the image
+        print("Extracting labels and properties")
+        self.extract_label_prop(sigma=1.7, nbr_ite_morph=4, minimum_area=400, savefig=False)
+
+        # Extract arrow properties
+        print("Extracting arrow properties")
+        self.arrow_info = self.process_arrow(inv_angle=0.6, plotfig=False, savefig=False)
+
+        # Get sub images
+        print("Getting sub images")
+        self.get_sub_images_and_blob(savefig=False)
+
+        # Extract circle info
+        print("Getting circle info")
+        self.circle_info = self.extract_circle_info(min_size = 50, savefig=False, plotfig=False)
+
+        # Get arrow index
+        print("Getting arrow index")
+        self.arrow_index = self.get_arrow_sub_image_index()
+
+
+        if False:
+            for index in range(len(self.sub_images)):
+                for index2 in range(len(self.sub_images[index])):
+                    if index2 == self.arrow_index[index][0] or index2 == self.circle_info[index][0]:
+                        plt.imshow(self.sub_images[index][index2])
+                        plt.show()
+
+        # Image pairing
+        print("Finding matched pairs")
+        self.matched_pairs = self.image_pairing()
+
+        # Classification
+        print("Classifying")
+        self.predictions = self.do_classification(self.sub_images, self.sub_images_blob)
+
+
+        # Figure infos
+        print("Getting figures info")
+        self.figures_info = self.get_figures_info()
+
+    def get_figures_info(self):
+        figures_info = []
+        for index in range(len(self.sub_images)):
+            figures_info.append({})
+            for index2 in range(len(self.sub_images[index])):
+                # Skip arrow and circle
+                if index2 == self.arrow_index[index][0] or index2 == self.circle_info[index][0]:
+                    continue
+                base_index = index2
+                try:
+                    matching_pair = self.matched_pair[index][index2]
+                except:
+                    matching_pair = -1
+                bbox = self.region_props[index][index2].bbox
+                center = ((bbox[2]+bbox[0])/2, (bbox[3]+bbox[1])/2)
+                number = self.predictions[index][index2]
+                figures_info[index][index2] = (center, number, matching_pair, bbox)
+        return figures_info
+
+    def image_pairing(self):
+        hu_distances = self.get_hu_distances(self.region_props)
+        self.matched_pair = self.get_matching_pairs(hu_distances)
+        return self.matched_pair
+
+    def get_arrow_sub_image_index(self):
+        arrow_index = []
+        for index in range(len(self.sub_images)):
+            arrow_index.append([])
+            for index2, prop in enumerate(self.region_props[index]):
+                arrow_center = self.arrow_info[index][0]
+                bbox = prop.bbox
+                if ((arrow_center[0] < bbox[2]) and (arrow_center[0] > bbox[0]) and
+                    (arrow_center[1] < bbox[3]) and (arrow_center[1] > bbox[1])):
+                    arrow_index[index].append(index2)
+        return arrow_index
+
+    def get_sub_images_and_blob(self, savefig=False):
+        self.sub_images = self.get_sub_images(self.images_gray, self.region_props,
+                                         self.label_im)
+
+        self.sub_images_blob = self.get_sub_images_blob(self.sub_images)
+
+        if savefig:
+            for index in range(len(self.sub_images)):
+                self.show_sub_images(self.sub_images, image_index=index)
+
+        if savefig:
+            for index in range(len(sub_images_blob)):
+                self.show_sub_images(self.sub_images_blob, image_index=index, prefix="blob_")
+
+    def extract_circle_info(self, min_size=100, savefig=False, plotfig=False):
+        circle_index = self.find_circle_index(min_size = min_size, savefig=savefig, printfig=plotfig)
+        circle_info = []
+        for index in range(self.images_gray.shape[0]):
+            prop = self.region_props[index][circle_index[index]]
+            bbox = prop.bbox
+            bbox_center = ((bbox[2]+bbox[0])/2, (bbox[3]+bbox[1])/2)
+            circle_info.append((circle_index[index], bbox_center))
+        return circle_info
+
+    def check_fourier_is_ok(self, fourier_descriptor):
+        target_fourier = [(5300, 7000), (20, 300), (910, 1800)]
+        fourier_ok = True
+        for i in range(len(target_fourier)):
+            if fourier_descriptor[i+1] < target_fourier[i][0]:
+                fourier_ok = False
+            elif fourier_descriptor[i+1] > target_fourier[i][1]:
+                fourier_ok = False
+        return fourier_ok
+
+    def get_arrow_contours(self, plotfig=False):
+        gradient_map = np.zeros(np.shape(self.images_gray))
+        arrow_contours = {}
+        for index in range(len(self.images_gray)):
+            gradient_im = filters.sobel(self.images_gray[index])
+            thresh = filters.threshold_otsu(gradient_im)
+            gradient_im[gradient_im < thresh] = 0
+            thresh = filters.threshold_otsu(gradient_im)
+            gradient_im[gradient_im < thresh] = 0
+            gradient_im[gradient_im >= thresh] = 1
+            sub_image = ndi.binary_closing(gradient_im, iterations=1)
+            contours = measure.find_contours(gradient_im, level=0.8)
+
+            for i, contour in enumerate(contours):
+                complex_contour = contour[:,0] + (contour[:,1] * 1j)
+                fourier_transform = np.fft.fft(complex_contour)
+                fourier_descriptor = np.absolute(fourier_transform)
+                if self.check_fourier_is_ok(fourier_descriptor):
+                    arrow_contours[index] = contour
+                    if plotfig:
+                        plt.plot(contour[:,1], contour[:,0],linewidth=2,
+                                  label="{}".format(fourier_descriptor[1:4]))
+            if plotfig:
+                plt.imshow(gradient_im)
+                plt.legend()
+                plt.show()
+
+        return arrow_contours
+
+    def get_arrow_im(self, arrow_contours, savefig=False):
+        arrows = np.zeros(self.images_gray.shape).astype(int)
+        for key in arrow_contours.keys():
+            contour = arrow_contours[key]
+            rr, cc = skimage.draw.polygon(contour[:,0], contour[:,1],
+                                          self.images_gray.shape[1:3])
+            arrows[key, rr,cc] = 1
+
+        if savefig:
+            self.print_images(self.arrows, title="Arrows")
+        return arrows
+
+    def get_arrow_info(self, arrow_im, arrow_props, inv_angle = 0.6, plotfig=False):
+        arrow_info = []
+        for index in range(len(arrow_props)):
+            prop = arrow_props[index][0]
+            bbox = prop.bbox
+            bbox_center = ((bbox[2]+bbox[0])/2, (bbox[3]+bbox[1])/2)
+            orientation = prop.orientation
+
+            proj_x_neg = np.sum(arrow_im[index, :, bbox[1]:np.floor(bbox_center[1]).astype(int)])
+            proj_x_pos = np.sum(arrow_im[index, :, np.ceil(bbox_center[1]).astype(int):bbox[3]])
+            if plotfig:
+                plt.imshow(arrow_im[index, :, bbox[1]:np.floor(bbox_center[1])])
+                plt.show()
+                plt.imshow(arrow_im[index, :, np.ceil(bbox_center[1]):bbox[3]])
+                plt.show()
+
+            if proj_x_neg > proj_x_pos:
+                direction_x = -1
+            else:
+                direction_x = 1
+
+            # If the angle is too big, the projection will give us the inverse result
+            if np.absolute(prop.orientation) > inv_angle*(np.pi/2):
+                direction_x = -direction_x
+            arrow_info.append((bbox_center, orientation, direction_x))
+        return arrow_info
+
+    def process_arrow(self, inv_angle=0.6, plotfig=False, savefig=False):
+        arrow_contours = self.get_arrow_contours()
+
+        arrow_im = self.get_arrow_im(arrow_contours, savefig=savefig)
+
+        arrow_props = self.get_region_props(arrow_im)
+
+        arrow_info = self.get_arrow_info(arrow_im, arrow_props, inv_angle, plotfig)
+
+        return arrow_info
+
+    def get_image_gray(self):
         images_eq = self.equalize_images(self.images)
 #        self.print_images(images_eq, title="Images Equalized")
 
         self.images_gray = skimage.color.rgb2gray(images_eq)
 #        self.print_images(self.images_gray, axis=True, title="Images Grayscale")
 
+    def extract_label_prop(self, sigma=1.7, nbr_ite_morph=4, minimum_area=400, savefig=False):
         images_edges = self.get_edges(self.images_gray, sigma=1.8)
 #        self.print_images(images_edges, title="Images Edges")
 
@@ -44,41 +245,27 @@ class ImageAnalysis:
         self.label_im = self.get_labels(images_morph)
 #        self.print_images(self.label_im, title="Images label")
 
-        self.region_props = self.get_region_props(self.images_gray, self.label_im)
+        self.region_props = self.get_region_props(self.label_im)
 
-        background_mask = images_morph == 0
-        images_only_shape = self.remove_images_background(self.images, background_mask)
-#        self.print_images(images_only_shape, axis=True, title="Images Only shapes")
-
-        # gaussian, otsu, binary fill_holes
         # Remove small images
         self.label_im = self.remove_small_labels(self.label_im, self.region_props, minimum_area=400)
         # Recalculate region props
-        self.region_props = self.get_region_props(self.images_gray, self.label_im)
+        self.region_props = self.get_region_props(self.label_im)
 
-        sub_images = self.get_sub_images(self.images_gray, self.region_props,
-                                         self.label_im)
-
-        sub_images_blob = self.get_sub_images_blob(sub_images)
-
-        #max_bboxes = self.get_biggest_bbox_area(self.label_im, self.region_props)
-        #for index in range(len(sub_images)):
-        #    sub_figure_index = max_bboxes[index][0]
-        #    plt.imshow(sub_images[index][sub_figure_index])
-        #    plt.show()
-
-        SAVE_SUBIMAGES = False
-        if SAVE_SUBIMAGES:
-            for index in range(len(sub_images)):
-                self.show_sub_images(sub_images, image_index=index)
-
-        SAVE_SUBIMAGES_BLOB = False
-        if SAVE_SUBIMAGES_BLOB:
-            for index in range(len(sub_images_blob)):
-                self.show_sub_images(sub_images_blob, image_index=index, prefix="blob_")
-
-        scaled_sub_images = self.scale_up_sub_images(sub_images_blob, self.region_props)
-        scaled_sub_images_blob = self.get_sub_images_blob(scaled_sub_images)
+    def find_circle_index(self, min_size= 100, savefig=False, printfig=False):
+        scaled_sub_images = self.scale_up_sub_images(self.sub_images_blob, self.region_props, min_size =min_size)
+        #scaled_sub_images_blob = self.get_sub_images_blob(scaled_sub_images)
+        scaled_sub_images_blob = []
+        for index in range(len(scaled_sub_images)):
+            scaled_sub_images_blob.append([])
+            for index2 in range(len(scaled_sub_images[index])):
+                local_im = scaled_sub_images[index][index2]
+                thresh = filters.threshold_otsu(local_im)
+                local_im[local_im < thresh] = 0
+                thresh = filters.threshold_otsu(local_im)
+                local_im[local_im < thresh] = 0
+                local_im[local_im >= thresh] = 1
+                scaled_sub_images_blob[index].append(local_im)
 
         SAVE_SCALED_SUBIMAGES = True
         if SAVE_SCALED_SUBIMAGES:
@@ -90,13 +277,7 @@ class ImageAnalysis:
             for index in range(len(scaled_sub_images_blob)):
                 self.show_sub_images(scaled_sub_images_blob, image_index=index, prefix="scaled_blob_")
 
-        # TODO: find out which image is the robot
         compacity = self.get_sub_compacity(scaled_sub_images_blob)
-        #for index in range(len(compacity)):
-        #    print("{}:".format(index), end='')
-        #    for index2, item in enumerate(compacity[index]):
-        #        print("{}_{}, ".format(index2, item), end='')
-        #    print("")
 
         self.min_compacity_index = self.get_min_compacity_index(compacity)
 
@@ -111,12 +292,7 @@ class ImageAnalysis:
                     plt.title("{}.{}: {}".format(index, index2, compacity[index][index2]))
                     plt.show()
 
-        # TODO: remove circle and robot from the hu_distances
-        #hu_distances = self.get_hu_distances(self.region_props)
-
-        #self.matched_pair, self.unmatched_val = self.get_matching_pairs(hu_distances)
-
-    def extract_label_prop(self, images, sigma=1.7, nbr_morph=4)
+        return self.min_compacity_index
 
 
     def print_images(self, images, im_names=None, axis=False, size=(10,20), title=None, print_type="imshow", logy=True):
@@ -223,9 +399,9 @@ class ImageAnalysis:
         with open(os.path.join(RESULT_DIR, output_file), 'wb') as f:
             pickle.dump(images_only_shape, f)
 
-    def get_region_props(self, images, label_im):
+    def get_region_props(self, label_im):
         region_props = []
-        for index in range(images.shape[0]):
+        for index in range(len(label_im)):
             prop = measure.regionprops(label_im[index])
             region_props.append(prop)
         return region_props
@@ -469,25 +645,73 @@ class ImageAnalysis:
         for index in range(len(hu_distances)):
             argmax_array.append([])
             for i in range(len(hu_distances[index])):
-                argmax_array[index].append(int(np.argmax(hu_distances[index][i])))
-                #self.print_local("{}.{}: {}".format(index,i, argmax_array[index][i]))
+                if i == self.circle_info[index][0] or i == self.arrow_index[index][0]:
+                    argmax_array[index].append(-1)
+                    continue
+                max_distance = 0
+                for j in range(len(hu_distances[index][0])):
+                    # don't calculate distance with yourself
+                    if i == j:
+                        continue
+                    # skip circle and arrow
+                    if j == self.circle_info[index][0] or j == self.arrow_index[index][0]:
+                        continue
+
+                    local_distance = hu_distances[index][i][j]
+                    if local_distance > max_distance:
+                        max_distance = local_distance
+                        max_index = j
+                argmax_array[index].append(max_index)
 
         matched_pair = []
         unmatched_val = []
         for index in range(len(hu_distances)):
-            matched_pair.append([])
-            unmatched_val.append([])
+            matched_pair.append({})
+            unmatched_val = []
             good_match = 0
+            bad_match = 0
             for i in range(len(hu_distances[index])):
-                if int(argmax_array[index][int(argmax_array[index][i])]) == int(i):
-                    #self.print_local("Good match for {} with {}".format(i, argmax_array[index][i]))
-                    good_match += 1
-                    matched_pair[index].append((i, argmax_array[index][i]))
-                else:
-                    #self.print_local("Bad match for {}".format(i))
-                    unmatched_val[index].append(i)
+                local_argmax = argmax_array[index][i]
 
-            bad_match = len(argmax_array[index])-good_match
+                if local_argmax == -1:
+                    continue
+
+                pair_argmax = argmax_array[index][local_argmax]
+
+                if pair_argmax == i:
+                    self.print_local("Good match for {} with {}".format(i, local_argmax))
+                    good_match += 1
+                    matched_pair[index][i] = local_argmax
+                else:
+                    self.print_local("Bad match for {} with {}, whilst pair was {}".format(i, local_argmax, pair_argmax))
+                    bad_match += 1
+                    unmatched_val.append(i)
+
+            if bad_match > 1:
+                match_index = {}
+                for i in unmatched_val:
+                    max_dist = 0
+                    for j in unmatched_val:
+                        if i == j:
+                            continue
+                        local_distance = hu_distances[index][i][j]
+                        if local_distance > max_dist:
+                            max_dist = local_distance
+                            max_index = j
+                    match_index[i] = max_index
+                for key in match_index.keys():
+                    match = match_index[key]
+                    other_match = match_index[match]
+                    if other_match == match:
+                        self.print_local("NEW Good match for {} with {}".format(val, match))
+                        good_match += 1
+                        bad_match -= 1
+                        matched_pair[index][val] = match
+
+
+
+
+
             self.print_local("{}: Good match: {}, Bad match: {}".format( \
                              index, good_match, bad_match)
                             )
@@ -498,5 +722,100 @@ class ImageAnalysis:
                          cumulative_good_match, cumulative_bad_match)
                         )
 
-        return matched_pair, unmatched_val
+        return matched_pair
 
+    def extraction(self, image, blob):
+
+        # Otsu's Thresholding
+        thresh_otsu = filters.threshold_otsu(image)
+        image_filt = (image > thresh_otsu)
+
+        # Blob Extraction
+        # Remove line below
+        blob = ndi.binary_fill_holes(~image_filt)
+
+        image_segm = blob & image_filt
+
+        #number_segm = ndi.binary_closing(image_segm)
+        number_segm = image_segm
+
+        return number_segm
+
+    def reshape_number(self, image) :
+
+        properties = skimage.measure.regionprops(image.astype(int))
+
+        min_row = -1
+        max_row = -1
+        min_col = -1
+        max_col = -1
+
+        for prop in properties :
+            min_row = prop.bbox[0]
+            min_col = prop.bbox[1]
+            max_row = prop.bbox[2]
+            max_col = prop.bbox[3]
+
+        if (min_row != -1) & (min_col != -1) & (max_row != -1) & (max_col != -1) :
+
+            extracted_number = image[min_row:max_row, min_col:max_col]
+
+            maxi = np.max(np.shape(extracted_number)) + 8
+            #mini = np.min(np.shape(extracted_number))
+            #ind_mini = np.where(np.shape(extracted_number) == mini)
+
+            offset_row = np.round((maxi-extracted_number.shape[0])/2).astype(int)
+            offset_col = np.round((maxi-extracted_number.shape[1])/2).astype(int)
+
+
+            extended_number = np.zeros([maxi, maxi])
+
+            extended_number[offset_row:offset_row+extracted_number.shape[0],
+                            offset_col:offset_col+extracted_number.shape[1]] = extracted_number
+
+            #index_begin = np.round((maxi-mini)/2).astype(int)
+            #index_finish = index_begin + mini
+
+            #if ind_mini == 0:
+            #    extended_number[4:maxi-4, index_begin:index_finish] = extracted_number
+            #else:
+            #    extended_number[index_begin:index_finish, 4:maxi-4] = extracted_number
+
+            extended_number_resh = skimage.transform.resize(extended_number, [28, 28], mode='edge')
+
+            return extended_number_resh
+        else :
+            return np.zeros((28,28))
+
+    def predict_number(self, number, mlp) :
+        # Reshape image
+        extended_number = self.reshape_number(number)
+        number_resh = extended_number.reshape((1, 28*28))#/255
+        predicted_number = mlp.predict(number_resh)
+
+        return predicted_number[0] #mlp.predict(number_resh)
+
+    def do_classification(self, sub_images, sub_images_blob):
+        # Load classifier and scaler
+        with open('MLPClassifier.pickle', 'rb') as f :
+            clf = pickle.load(f)
+
+        predictions = []
+        for index in range(len(sub_images)):
+            predictions.append([])
+            for index2 in range(len(sub_images[index])):
+                image = sub_images[index][index2]
+                blob = sub_images_blob[index][index2]
+
+
+                number_segm = self.extraction(image, blob)
+
+                percent_white = np.sum(number_segm)/number_segm.size
+
+                if  (percent_white > 0.02) & (percent_white < 0.5) :
+                    extended_number = self.reshape_number(number_segm)
+                    predicted_number = self.predict_number(extended_number, clf)
+                else :
+                    predicted_number = -1 # No number in the image
+                predictions[index].append(predicted_number)
+        return predictions
