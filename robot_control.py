@@ -139,6 +139,13 @@ class RobotController :
         # Move robot
         self.robot.move_forward(distance=distance_to_move)
 
+    def check_angle(self, theta_i, epsilon=0.1):
+        if  (self.theta_t - epsilon) < theta_i and (self.theta_t + epsilon) > theta_i:
+            return True
+        else:
+            return false
+
+
 ######### Code
 # Create Robot instance
 #robot = Robot(hostname='ev3dev.local')
