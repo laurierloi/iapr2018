@@ -8,6 +8,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from image_analysis import ImageAnalysis
+
+REAL_WORLD = False
 from robot_control import RobotController
 from iapr.webcam import WebcamVideoStream
 
@@ -16,12 +18,13 @@ from iapr.webcam import WebcamVideoStream
 print_local = print
 RESULT_DIR = "result"
 SAVE_TO_FILE = True
+SAVE_FIG = True
 
 
 # Typed variables
 imageAnalysis = None
-wvs = WebcamVideoStream(src=0)
 robotController = None
+wvs = WebcamVideoStream(src=0)
 
 
 # PARAMETERS
@@ -39,7 +42,7 @@ def main():
 
     # 1) Create a webcam video stream
     #   Note: src=0 links to the USB Webcam of the computers provided for the project
-    webcam = True
+    webcam = False
     if webcam:
         #wvs =
 
@@ -48,13 +51,18 @@ def main():
         for i in range(1000):
             get_images(i)
     else:
-        ic =  skimage.io.imread_collection("Parcours/2.jpg")
+        ic =  skimage.io.imread_collection("data/test1_1.png")
         images = skimage.io.concatenate_images(ic)
+        xmin = 85
+        xmax = 570
+        ymin = 60
+        ymax = 425
+        images = np.copy(images[:,ymin:ymax, xmin:xmax, :])
         im_names = ["Test image"]
 
     # 2) first image analysis
     imageAnalysis = ImageAnalysis(images, im_names, result_dir=RESULT_DIR,
-                                  print_local=print_local, save_to_file=SAVE_TO_FILE)
+                                  print_local=print_local, save_to_file=SAVE_TO_FILE, savefig=SAVE_FIG)
 
     imageAnalysis.image_analysis()
     figures_info = imageAnalysis.figures_info[0] # (center, number, matching_pair, bbox)
@@ -77,6 +85,8 @@ def main():
         plt.plot([y0,y1], [x0, x1], 'ro-')
     plt.savefig("gameplan.png")
     plt.close()
+
+    exit()
 
     # 4) calibrate robot
     robot_info_cal = get_robot_info()

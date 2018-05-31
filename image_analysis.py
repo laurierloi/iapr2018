@@ -18,13 +18,14 @@ from scipy import spatial
 
 class ImageAnalysis:
 
-    def __init__(self, images, im_names, result_dir="result", print_local=print, save_to_file=True, with_timestamp=False):
+    def __init__(self, images, im_names, result_dir="result", print_local=print, save_to_file=True, with_timestamp=False, savefig=True):
         self.images = images
         self.im_names = im_names
         self.result_dir = result_dir
         self.print_local = print_local
         self.to_file = save_to_file
         self.with_timestamp = with_timestamp
+        self.savefig = savefig
 
     def image_analysis(self):
         """Function which computes every steps of the image analysis"""
@@ -40,11 +41,11 @@ class ImageAnalysis:
 
         # Extract labels and properties from the image
         print("Extracting labels and properties")
-        self.extract_label_prop(sigma=1.7, nbr_ite_morph=4, minimum_area=400, savefig=False)
+        self.extract_label_prop(sigma=1.7, nbr_ite_morph=4, minimum_area=400, savefig=self.savefig)
 
         # Extract arrow properties
         print("Extracting arrow properties")
-        self.arrow_info = self.process_arrow(inv_angle=0.6, plotfig=False, savefig=False)
+        self.arrow_info = self.process_arrow(inv_angle=0.6, plotfig=False, savefig=self.savefig)
 
         # Get sub images
         print("Getting sub images")
@@ -52,7 +53,7 @@ class ImageAnalysis:
 
         # Extract circle info
         print("Getting circle info")
-        self.circle_info = self.extract_circle_info(min_size = 50, savefig=False, plotfig=False)
+        self.circle_info = self.extract_circle_info(min_size = 50, savefig=self.savefig, plotfig=False)
 
         # Get arrow index
         print("Getting arrow index")
@@ -148,16 +149,20 @@ class ImageAnalysis:
         return circle_info
 
     def check_fourier_is_ok(self, fourier_descriptor):
-        target_fourier = [(4500, 8000), (00, 300), (800, 2000)]
+        target_fouriers = [[(2100, 3500), (0, 300), (300, 900)]]
+        # Additional fouriers for calibration
+        #target_fouriers = [[(2100, 3500), (0, 300), (300, 900)],
+        #                   [(1000, 6000), (0, 300), (300, 1800)]]
         fourier_ok = True
         for i in range(len(target_fourier)):
-            if fourier_descriptor[i+1] < target_fourier[i][0]:
-                fourier_ok = False
-            elif fourier_descriptor[i+1] > target_fourier[i][1]:
-                fourier_ok = False
+            for target_fourier in target_fouriers:
+                if fourier_descriptor[i+1] < target_fourier[i][0]:
+                    fourier_ok = False
+                elif fourier_descriptor[i+1] > target_fourier[i][1]:
+                    fourier_ok = False
         return fourier_ok
 
-    def get_arrow_contours(self, plotfig=False):
+    def get_arrow_contours(self, savefig=False):
         gradient_map = np.zeros(np.shape(self.images_gray))
         arrow_contours = {}
         for index in range(len(self.images_gray)):
@@ -167,6 +172,7 @@ class ImageAnalysis:
             thresh = filters.threshold_otsu(gradient_im)
             gradient_im[gradient_im < thresh] = 0
             gradient_im[gradient_im >= thresh] = 1
+            plt.show(gradient_im)
             sub_image = ndi.binary_closing(gradient_im, iterations=1)
             contours = measure.find_contours(gradient_im, level=0.8)
 
@@ -176,13 +182,13 @@ class ImageAnalysis:
                 fourier_descriptor = np.absolute(fourier_transform)
                 if self.check_fourier_is_ok(fourier_descriptor):
                     arrow_contours[index] = contour
-                    if plotfig:
+                    if savefig:
                         plt.plot(contour[:,1], contour[:,0],linewidth=2,
                                   label="{}".format(fourier_descriptor[1:4]))
-            if plotfig:
+            if savefig:
                 plt.imshow(gradient_im)
                 plt.legend()
-                plt.show()
+                plt.savefig("{}/contours_{}.png".format(self.result_dir, index))
 
         return arrow_contours
 
@@ -195,24 +201,23 @@ class ImageAnalysis:
             arrows[key, rr,cc] = 1
 
         if savefig:
-            self.print_images(self.arrows, title="Arrows")
+            self.print_images(arrows, title="Arrows")
         return arrows
 
     def get_arrow_info(self, arrow_im, arrow_props, inv_angle = 0.6, plotfig=False):
         arrow_info = []
         for index in range(len(arrow_props)):
-            print(index)
             prop = arrow_props[index][0]
             bbox = prop.bbox
-            bbox_center = ((bbox[2]+bbox[0])/2, (bbox[3]+bbox[1])/2)
+            bbox_center = np.round(((bbox[2]+bbox[0])/2, (bbox[3]+bbox[1])/2)).astype(int)
             orientation = prop.orientation
 
-            proj_x_neg = np.sum(arrow_im[index, :, bbox[1]:np.floor(bbox_center[1]).astype(int)])
-            proj_x_pos = np.sum(arrow_im[index, :, np.ceil(bbox_center[1]).astype(int):bbox[3]])
+            proj_x_neg = np.sum(arrow_im[index, :, bbox[1]:bbox_center[1]])
+            proj_x_pos = np.sum(arrow_im[index, :, bbox_center[1]:bbox[3]])
             if plotfig:
-                plt.imshow(arrow_im[index, :, bbox[1]:np.floor(bbox_center[1])])
+                plt.imshow(arrow_im[index, :, bbox[1]:bbox_center[1]])
                 plt.show()
-                plt.imshow(arrow_im[index, :, np.ceil(bbox_center[1]):bbox[3]])
+                plt.imshow(arrow_im[index, :, bbox_center[1]:bbox[3]])
                 plt.show()
 
             if proj_x_neg > proj_x_pos:
@@ -227,12 +232,10 @@ class ImageAnalysis:
         return arrow_info
 
     def process_arrow(self, inv_angle=0.6, plotfig=False, savefig=False):
-        arrow_contours = self.get_arrow_contours()
-        print(arrow_contours)
+        arrow_contours = self.get_arrow_contours(savefig)
         arrow_im = self.get_arrow_im(arrow_contours, savefig=savefig)
 
         arrow_props = self.get_region_props(arrow_im)
-        print(arrow_props)
 
         arrow_info = self.get_arrow_info(arrow_im, arrow_props, inv_angle, plotfig)
 
@@ -240,20 +243,20 @@ class ImageAnalysis:
 
     def get_image_gray(self):
         images_eq = self.equalize_images(self.images)
-#        self.print_images(images_eq, title="Images Equalized")
+        self.print_images(images_eq, title="Images Equalized")
 
         self.images_gray = skimage.color.rgb2gray(images_eq)
-#        self.print_images(self.images_gray, axis=True, title="Images Grayscale")
+        self.print_images(self.images_gray, axis=True, title="Images Grayscale")
 
     def extract_label_prop(self, sigma=1.7, nbr_ite_morph=4, minimum_area=400, savefig=False):
         images_edges = self.get_edges(self.images_gray, sigma=1.8)
-#        self.print_images(images_edges, title="Images Edges")
+        self.print_images(images_edges, title="Images Edges")
 
         images_morph = self.morph_to_get_shape(images_edges, nbr_ite=4)
-#        self.print_images(images_morph, title="Images Morphological")
+        self.print_images(images_morph, title="Images Morphological")
 
         self.label_im = self.get_labels(images_morph)
-#        self.print_images(self.label_im, title="Images label")
+        self.print_images(self.label_im, title="Images label")
 
         self.region_props = self.get_region_props(self.label_im)
 
@@ -377,10 +380,6 @@ class ImageAnalysis:
             # Open
             images_morph[index] = ndi.binary_opening(images_morph[index], iterations = nbr_ite,
                                                      structure=cross_struct)
-            #images_morph[index] = ndi.binary_erosion(images_morph[index], iterations = nbr_ite,
-            #                                         structure=cross_struct)
-            #images_morph[index] = ndi.binary_dilation(images_morph[index], iterations = nbr_ite,
-            #                                         structure=cross_struct)
         return images_morph
 
     def get_labels(self, images):
