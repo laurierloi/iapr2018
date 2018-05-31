@@ -11,6 +11,8 @@ class RobotController :
         self.__b = []
         self.__a_init = 1
         self.__b_init = 1
+        self.cal_dist = 20
+        self.cal_angle = 45
         self.robot = Robot(hostname='ev3dev.local')
         #print('a = {} AND b = {} \n'.format(self.__a, self.__b))
 
@@ -19,33 +21,32 @@ class RobotController :
             convert_angle = theta
         else :
             if theta >= 0 :
-                convert_angle = math.radians(180) - theta
+                convert_angle = theta - math.radians(180)
             else :
-                convert_angle = -math.radians(180) - theta
+                convert_angle = theta + math.radians(180)
         return convert_angle
 
 
     def calibration(self) :
-        dist = 20
-        angle = 45
 
         # Rotate robot of 45 degrees to calibrate the future movements
-        self.robot.steer_in_place(angle=angle)
+        self.robot.steer_in_place(angle=self.cal_angle)
 
-        # Move robot of 10cm to calibrate the future movements
-        self.robot.move_forward(distance=dist)
+        # Move robot of 20cm to calibrate the future movements
+        self.robot.move_forward(distance=self.cal_dist)
 
     def calcFactorCalibr(self, x_i, y_i, theta_i, x_f, y_f, theta_f) :
         # Calculate the corrections factors based on the calibration
-        angle = 45
+        angle = self.cal_angle
         corr_a = math.radians(angle)/(theta_f-theta_i)
 
-        dist_t = 10
+        dist_t = self.cal_angle
         dist_p = np.linalg.norm([x_f - x_i, y_f - y_i])
         corr_b = dist_t/dist_p
 
         self.__a_init = np.abs(corr_a)
         self.__b_init = np.abs(corr_b)
+        print("Calibration corrections: a:{}, b:{}".format(self.__a_init, self.__b_init))
 
     def calcDisplacement(self, x_i, y_i, theta_i, x_f, y_f) :
         dir_vector = [x_f-x_i, y_f-y_i]
@@ -125,14 +126,18 @@ class RobotController :
         else :
             corr_fact_dist = self.__b_init
 
-        print('a = {} AND b = {}'.format(corr_fact_angle, corr_fact_dist))
+        print('Corr factors: a = {} AND b = {}'.format(corr_fact_angle, corr_fact_dist))
 
-        # Apply the movements using the correction factors
+        # Calculate the movements using the correction factors
+        angle_to_move = math.degrees(corr_fact_angle*angle)
+        distance_to_move = corr_fact_dist*dist
+        print("Movements: angle: {}, distance: {}".format(angle_to_move, distance_to_move))
+
         # Rotate robot
-        self.robot.steer_in_place(angle=math.degrees(corr_fact_angle*angle))
+        self.robot.steer_in_place(angle=angle_to_move)
 
         # Move robot
-        self.robot.move_forward(distance=corr_fact_dist*dist)
+        self.robot.move_forward(distance=distance_to_move)
 
 ######### Code
 # Create Robot instance

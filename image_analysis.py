@@ -46,6 +46,7 @@ class ImageAnalysis:
         # Extract arrow properties
         print("Extracting arrow properties")
         self.arrow_info = self.process_arrow(inv_angle=0.6, plotfig=False, savefig=self.savefig)
+        print(self.arrow_info)
 
         # Get sub images
         print("Getting sub images")
@@ -149,17 +150,15 @@ class ImageAnalysis:
         return circle_info
 
     def check_fourier_is_ok(self, fourier_descriptor):
-        target_fouriers = [[(2100, 3500), (0, 300), (300, 900)]]
+        target_fouriers = [(2100, 3000), (0, 300), (300, 900)]
         # Additional fouriers for calibration
-        #target_fouriers = [[(2100, 3500), (0, 300), (300, 900)],
-        #                   [(1000, 6000), (0, 300), (300, 1800)]]
+        #target_fouriers = [(1000, 6000), (0, 300), (300, 1800)]
         fourier_ok = True
         for i in range(len(target_fouriers)):
-            for target_fourier in target_fouriers:
-                if fourier_descriptor[i+1] < target_fourier[i][0]:
-                    fourier_ok = False
-                elif fourier_descriptor[i+1] > target_fourier[i][1]:
-                    fourier_ok = False
+            if fourier_descriptor[i+1] < target_fouriers[i][0]:
+                fourier_ok = False
+            elif fourier_descriptor[i+1] > target_fouriers[i][1]:
+                fourier_ok = False
         return fourier_ok
 
     def get_arrow_contours(self, savefig=False):
@@ -172,7 +171,6 @@ class ImageAnalysis:
             thresh = filters.threshold_otsu(gradient_im)
             gradient_im[gradient_im < thresh] = 0
             gradient_im[gradient_im >= thresh] = 1
-            plt.show(gradient_im)
             sub_image = ndi.binary_closing(gradient_im, iterations=1)
             contours = measure.find_contours(gradient_im, level=0.8)
 
@@ -189,6 +187,7 @@ class ImageAnalysis:
                 plt.imshow(gradient_im)
                 plt.legend()
                 plt.savefig("{}/contours_{}.png".format(self.result_dir, index))
+                plt.close()
 
         return arrow_contours
 
@@ -273,19 +272,20 @@ class ImageAnalysis:
             scaled_sub_images_blob.append([])
             for index2 in range(len(scaled_sub_images[index])):
                 local_im = scaled_sub_images[index][index2]
-                thresh = filters.threshold_otsu(local_im)
-                local_im[local_im < thresh] = 0
-                thresh = filters.threshold_otsu(local_im)
-                local_im[local_im < thresh] = 0
-                local_im[local_im >= thresh] = 1
+                try:
+                    thresh = filters.threshold_otsu(local_im, level=0.6)
+                    local_im[local_im < thresh] = 0
+                    local_im[local_im >= thresh] = 1
+                except:
+                    pass
                 scaled_sub_images_blob[index].append(local_im)
 
-        SAVE_SCALED_SUBIMAGES = True
+        SAVE_SCALED_SUBIMAGES = False
         if SAVE_SCALED_SUBIMAGES:
             for index in range(len(scaled_sub_images)):
                 self.show_sub_images(scaled_sub_images, image_index=index, prefix="scaled_")
 
-        SAVE_SCALED_SUBIMAGES_BLOB = True
+        SAVE_SCALED_SUBIMAGES_BLOB = False
         if SAVE_SCALED_SUBIMAGES_BLOB:
             for index in range(len(scaled_sub_images_blob)):
                 self.show_sub_images(scaled_sub_images_blob, image_index=index, prefix="scaled_blob_")
@@ -294,16 +294,17 @@ class ImageAnalysis:
 
         self.min_compacity_index = self.get_min_compacity_index(compacity)
 
-        PRINT_MIN_COMPACITY_IMAGE = False
-        if PRINT_MIN_COMPACITY_IMAGE:
+        if savefig:
             for index in range(len(compacity)):
                 sorted_compacity = np.sort(compacity[index])
-                for item in range(3):
+                for item in range(2):
                     mask = compacity[index] == sorted_compacity[item]
                     index2 = np.argmax(mask)
                     plt.imshow(scaled_sub_images_blob[index][index2])
                     plt.title("{}.{}: {}".format(index, index2, compacity[index][index2]))
-                    plt.show()
+                    plt.savefig("{}/min_compacity_{}_{}.png".format(self.result_dir, index, item))
+                    plt.close()
+                    #plt.show()
 
         return self.min_compacity_index
 

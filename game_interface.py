@@ -139,21 +139,21 @@ def main():
 
 # (bbox_center, orientation, direction_x)
 def get_robot_info():
+    global RobotController
     arrow_info = get_arrow_info()[0]
-    print(arrow_info)
     orientation = arrow_info[1]
     direction_x = arrow_info[2]
     x = arrow_info[0][1]
     y = arrow_info[0][0]
-    global RobotController
     theta = robotController.convAngle(orientation, direction_x)
     return (x, y, theta)
 
 
 def get_arrow_info():
-    images = get_images()
     global imageAnalysis
+    images = get_images()
     arrow_info = imageAnalysis.get_arrow_info(images)
+    print("Arrow_info: {}".format(arrow_info))
     return arrow_info
 
 def get_images():
