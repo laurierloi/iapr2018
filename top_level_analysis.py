@@ -6,6 +6,7 @@ import argparse
 import skimage.io
 
 from image_analysis import ImageAnalysis
+#from robot_control import RobotController
 
 def parser():
     # Define the parser

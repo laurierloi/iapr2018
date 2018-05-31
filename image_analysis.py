@@ -79,6 +79,14 @@ class ImageAnalysis:
         print("Getting figures info")
         self.figures_info = self.get_figures_info()
 
+    def get_arrow_info(images):
+        self.images = images
+        self.get_image_gray()
+        self.arrow_info = self.process_arrow(inv_angle=0.6, plotfig=False, savefig=False)
+        return self.arrow_info
+
+
+
     def get_figures_info(self):
         figures_info = []
         for index in range(len(self.sub_images)):
@@ -687,6 +695,7 @@ class ImageAnalysis:
                     bad_match += 1
                     unmatched_val.append(i)
 
+            new_unmatched_val = []
             if bad_match > 1:
                 match_index = {}
                 for i in unmatched_val:
@@ -702,11 +711,22 @@ class ImageAnalysis:
                 for key in match_index.keys():
                     match = match_index[key]
                     other_match = match_index[match]
-                    if other_match == match:
-                        self.print_local("NEW Good match for {} with {}".format(val, match))
+                    if other_match == key:
+                        self.print_local("NEW Good match for {} with {}".format(key, match))
                         good_match += 1
                         bad_match -= 1
-                        matched_pair[index][val] = match
+                        matched_pair[index][key] = match
+                    else:
+                        new_unmatched_val.append(key)
+
+            # TODO: only match numbers with non-numbers
+
+            # HACK
+            if len(new_unmatched_val) == 2:
+                key0 = new_unmatched_val[0]
+                key1 = new_unmatched_val[1]
+                matched_pair[index][key0] = key1
+                matched_pair[index][key1] = key0
 
 
 
