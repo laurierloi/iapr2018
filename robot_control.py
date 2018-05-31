@@ -116,15 +116,17 @@ class RobotController :
         self.dist_t = dist
 
         # Calculate average of correction factors
-        if len(self.__a) > 0 :
-            corr_fact_angle = self.__a_init + np.mean(self.__a)
-        else :
-            corr_fact_angle = self.__a_init
+        #if len(self.__a) > 0 :
+        #    corr_fact_angle = self.__a_init + np.mean(self.__a)
+        #else :
+        #    corr_fact_angle = self.__a_init
 
-        if len(self.__b) > 0 :
-            corr_fact_dist = self.__b_init + np.mean(self.__b)
-        else :
-            corr_fact_dist = self.__b_init
+        #if len(self.__b) > 0 :
+        #    corr_fact_dist = self.__b_init + np.mean(self.__b)
+        #else :
+        #    corr_fact_dist = self.__b_init
+        corr_fact_angle = 1
+        corr_fact_dist = 2
 
         print('Corr factors: a = {} AND b = {}'.format(corr_fact_angle, corr_fact_dist))
 

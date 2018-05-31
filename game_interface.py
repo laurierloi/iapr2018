@@ -87,7 +87,7 @@ def main():
         plt.plot([y0,y1], [x0, x1], 'ro-')
     plt.savefig("gameplan.png")
     plt.close()
-
+    exit()
     print("Calibrating robot")
     # 4) calibrate robot
     global robotController

@@ -150,10 +150,11 @@ class ImageAnalysis:
         return circle_info
 
     def check_fourier_is_ok(self, fourier_descriptor):
-        target_fouriers = [(2100, 3000), (0, 300), (300, 900)]
+        #target_fouriers = [(2100, 3000), (0, 300), (300, 900)]
         # Additional fouriers for calibration
-        #target_fouriers = [(1000, 6000), (0, 300), (300, 1800)]
+        target_fouriers = [(0, 6000), (0, 500), (00, 1800)]
         fourier_ok = True
+        print(fourier_descriptor)
         for i in range(len(target_fouriers)):
             if fourier_descriptor[i+1] < target_fouriers[i][0]:
                 fourier_ok = False
@@ -166,12 +167,15 @@ class ImageAnalysis:
         arrow_contours = {}
         for index in range(len(self.images_gray)):
             gradient_im = filters.sobel(self.images_gray[index])
-            thresh = filters.threshold_otsu(gradient_im)
+            #plt.imshow(gradient_im)
+            #plt.show()
+            #thresh = filters.threshold_otsu(gradient_im)
+            thresh=0.5
             gradient_im[gradient_im < thresh] = 0
-            thresh = filters.threshold_otsu(gradient_im)
-            gradient_im[gradient_im < thresh] = 0
+            #thresh = filters.threshold_otsu(gradient_im)
+            #gradient_im[gradient_im < thresh] = 0
             gradient_im[gradient_im >= thresh] = 1
-            sub_image = ndi.binary_closing(gradient_im, iterations=1)
+            sub_image = ndi.binary_closing(gradient_im, iterations=10)
             contours = measure.find_contours(gradient_im, level=0.8)
 
             for i, contour in enumerate(contours):
