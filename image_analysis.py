@@ -152,7 +152,7 @@ class ImageAnalysis:
     def check_fourier_is_ok(self, fourier_descriptor):
         #target_fouriers = [(2100, 3000), (0, 300), (300, 900)]
         # Additional fouriers for calibration
-        target_fouriers = [(4000, 8000), (10, 400), (300, 1800)]
+        target_fouriers = [(4500, 8000), (10, 400), (800, 1500)]
         fourier_ok = True
         for i in range(len(target_fouriers)):
             if fourier_descriptor[i+1] < target_fouriers[i][0]:
@@ -165,8 +165,8 @@ class ImageAnalysis:
         gradient_map = np.zeros(np.shape(self.images_gray))
         arrow_contours = {}
         for index in range(len(self.images_gray)):
-            #gradient_im = filters.sobel(self.images_gray[index])
-            gradient_im = filters.scharr(self.images_gray[index])
+            gradient_im = filters.sobel(self.images_gray[index])
+            #gradient_im = filters.scharr(self.images_gray[index])
             thresh = filters.threshold_otsu(gradient_im)
             gradient_im[gradient_im < thresh] = 0
             #thresh = filters.threshold_otsu(gradient_im)
@@ -181,6 +181,11 @@ class ImageAnalysis:
                 fourier_descriptor = np.absolute(fourier_transform)
                 if self.check_fourier_is_ok(fourier_descriptor):
                     arrow_contours[index] = contour
+                   # plt.plot(contour[:, 1], contour[:, 0], linewidth=2,
+                    #         label="{}".format(fourier_descriptor[1:4]))
+                    #plt.imshow(gradient_im)
+                    #plt.legend()
+                    #plt.show()
                     if savefig:
                         plt.plot(contour[:,1], contour[:,0],linewidth=2,
                                   label="{}".format(fourier_descriptor[1:4]))

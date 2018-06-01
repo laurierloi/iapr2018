@@ -121,6 +121,7 @@ def main():
         else:
             finish = False
         print("New target: ", target_point)
+        print("Finish")
 
         on_shape = False
         while not on_shape:
@@ -136,11 +137,11 @@ def main():
                                              robot_info[2]
                                            )
             on_shape = robotController.checkOnTheShape(robot_info[0],
-                                                          robot_info[1],
-                                                          is_number,
-                                                          finish = finish,
-                                                          dist_min = DIST_MIN
-                                                         )
+                                                       robot_info[1],
+                                                       is_number,
+                                                       finish = finish,
+                                                       dist_min = DIST_MIN
+                                                      )
 
 # (bbox_center, orientation, direction_x)
 def get_robot_info():
@@ -151,6 +152,7 @@ def get_robot_info():
             arrow_info = get_arrow_info()[0]
             break
         except:
+            print("Failed to get arrow info")
             continue
 
     orientation = arrow_info[1]
